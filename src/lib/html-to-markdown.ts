@@ -40,6 +40,30 @@ export function createTurndown(): TurndownService {
       return rows.length ? `\n\n${toMarkdownTable(rows, true, (c) => c)}\n\n` : "";
     },
   });
+  // Itens de lista com um espaço após o marcador ("- item"), em vez dos três do padrão.
+  td.addRule("listItem", {
+    filter: "li",
+    replacement: (content, node, options) => {
+      const parent = node.parentNode as HTMLElement | null;
+      let prefix = `${options.bulletListMarker} `;
+      if (parent?.nodeName === "OL") {
+        const start = Number(parent.getAttribute("start") ?? 1);
+        prefix = `${start + Array.prototype.indexOf.call(parent.children, node)}. `;
+      }
+      const indent = " ".repeat(prefix.length);
+      const body = content
+        .replace(/^\n+/, "")
+        .replace(/\n+$/, "\n")
+        .replace(/\n/gm, `\n${indent}`)
+        .replace(new RegExp(`\\n${indent}$`), "\n");
+      return prefix + body + (node.nextSibling && !/\n$/.test(body) ? "\n" : "");
+    },
+  });
+  // "~~" é a forma de riscado mais compatível entre leitores de Markdown.
+  td.addRule("strikethrough", {
+    filter: ["del", "s"],
+    replacement: (content) => (content.trim() ? `~~${content}~~` : content),
+  });
   td.remove(["script", "style", "noscript"]);
   return td;
 }

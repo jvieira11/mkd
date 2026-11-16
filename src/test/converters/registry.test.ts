@@ -39,3 +39,20 @@ describe("registry", () => {
     expect(getExtension("a.b.TXT")).toBe(".txt");
   });
 });
+
+describe("área de transferência", () => {
+  const clip = (data: Record<string, string>) =>
+    ({ files: [], getData: (t: string) => data[t] ?? "" }) as unknown as DataTransfer;
+
+  it("prioriza HTML formatado, detecta JSON e cai para texto", async () => {
+    const { clipboardToFile } = await import("@/hooks/use-global-file-input");
+    expect(
+      (clipboardToFile(clip({ "text/html": "<p>a</p>", "text/plain": "a" })) as File).name,
+    ).toMatch(/\.html$/);
+    expect((clipboardToFile(clip({ "text/plain": '{"a":1}' })) as File).name).toMatch(/\.json$/);
+    expect((clipboardToFile(clip({ "text/plain": "{ não é json" })) as File).name).toMatch(
+      /\.txt$/,
+    );
+    expect(clipboardToFile(clip({ "text/plain": "  " }))).toBeNull();
+  });
+});

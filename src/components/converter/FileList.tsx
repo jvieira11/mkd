@@ -26,7 +26,7 @@ export function FileList({ items, selectedId, onSelect, onRemove }: FileListProp
             className={cn(
               "group flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               item.id === selectedId
-                ? "border-primary/40 bg-accent"
+                ? "border-brand/50 bg-brand-soft"
                 : "border-transparent hover:bg-accent/60",
             )}
           >
@@ -88,12 +88,7 @@ function StatusIcon({ status }: { status: ConversionItem["status"] }) {
         />
       );
     case "done":
-      return (
-        <CheckCircle2
-          className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-          aria-label="Pronto"
-        />
-      );
+      return <CheckCircle2 className="h-4 w-4 shrink-0 text-brand" aria-label="Pronto" />;
     case "error":
     case "unsupported":
       return <AlertCircle className="h-4 w-4 shrink-0 text-destructive" aria-label="Erro" />;

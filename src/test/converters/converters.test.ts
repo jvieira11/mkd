@@ -124,3 +124,19 @@ describe("html", () => {
     expect(r.markdown).toBe("# Página\n\nOi\n\n| a\\|b | x<br>y |\n| --- | --- |\n| 1 | 2 |\n");
   });
 });
+
+describe("html colado do Google Docs", () => {
+  it("entende negrito/itálico por CSS e ignora o <b> que envolve tudo", async () => {
+    const html = `<meta charset="utf-8"><b style="font-weight:normal;" id="docs-internal-guid-abc"><p dir="ltr"><span style="font-weight:400;">Texto </span><span style="font-weight:700;">forte</span><span style="font-weight:400;"> e </span><span style="font-style:italic;">leve</span><span style="text-decoration:line-through;"> velho</span></p></b>`;
+    const r = await convert(new File([html], "colado-1.html", { type: "text/html" }));
+    expect(r.markdown).toBe("Texto **forte** e *leve* ~~velho~~\n");
+  });
+});
+
+describe("listas em HTML", () => {
+  it("usa um espaço após o marcador e indenta subníveis", async () => {
+    const html = `<ul><li>um</li><li>dois<ul><li>sub</li></ul></li></ul><ol start="3"><li>três</li><li>quatro</li></ol>`;
+    const r = await convert(new File([html], "a.html"));
+    expect(r.markdown).toBe("- um\n- dois\n  - sub\n\n3. três\n4. quatro\n");
+  });
+});

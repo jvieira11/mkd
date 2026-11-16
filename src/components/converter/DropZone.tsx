@@ -21,6 +21,7 @@ export function DropZone({ accept, onFiles, compact }: DropZoneProps) {
 
   return (
     <div
+      data-dropzone
       role="button"
       tabIndex={0}
       aria-label="Selecionar arquivos para converter"
@@ -45,11 +46,11 @@ export function DropZone({ accept, onFiles, compact }: DropZoneProps) {
         "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         compact ? "px-4 py-5" : "px-6 py-14",
         dragging
-          ? "border-primary bg-accent"
-          : "border-border hover:border-muted-foreground/50 hover:bg-accent/50",
+          ? "border-brand bg-brand-soft"
+          : "border-border hover:border-brand/60 hover:bg-brand-soft",
       )}
     >
-      <div className="rounded-full bg-secondary p-3">
+      <div className="rounded-full bg-brand-soft p-3 text-brand">
         <Upload className="h-5 w-5" />
       </div>
       <div>
@@ -58,7 +59,7 @@ export function DropZone({ accept, onFiles, compact }: DropZoneProps) {
         </p>
         {!compact && (
           <p className="mt-1 text-sm text-muted-foreground">
-            Tudo é processado no seu navegador. Nenhum arquivo é enviado para servidores.
+            Vários arquivos de uma vez · PDF, DOCX, ODT, XLSX, JSON, TXT e HTML
           </p>
         )}
       </div>

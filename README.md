@@ -13,6 +13,17 @@ Tudo roda no navegador: nenhum arquivo é enviado para servidores.
 **Para adicionar um formato:** crie `src/converters/<formato>.ts` exportando um `Converter` e registre-o em `src/converters/index.ts`.
 A interface (aceitar o arquivo, opções, prévia e download) se ajusta sozinha.
 
+## Identidade visual
+
+![Identidade mkd](docs/identidade-mkd.png)
+
+O ícone é uma cerquilha (`#`, título em Markdown) cuja haste direita vira uma seta para baixo, a ideia de conversão.
+
+- Arquivos: `public/brand/logo.svg` (claro), `public/brand/logo-dark.svg` (escuro), `public/brand/icon.svg` e `public/favicon.svg`.
+- Componente React: `src/components/brand/Logo.tsx` (`Logo`, `LogoIcon`, `LogoWordmark`).
+- Paleta: Tinta `#0B1220`, Grafite `#1E293B`, Ardósia `#64748B`, Névoa `#E2E8F0`, Papel `#F8FAFC`, Esmeralda `#10B981` (ícone), Esmeralda escura `#047857` (ações no tema claro) e Esmeralda clara `#34D399` (ações no tema escuro). Os tokens estão em `src/styles.css` (`--brand`, `--brand-soft`).
+
+
 This project was built with [Lovable](https://lovable.dev).
 
 ## Build with Lovable
