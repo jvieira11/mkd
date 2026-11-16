@@ -18,7 +18,7 @@ describe("registry", () => {
   });
 
   it("retorna undefined para formatos desconhecidos", () => {
-    expect(registry.find("foto.heic", "image/heic")).toBeUndefined();
+    expect(registry.find("arquivo.xyz", "application/x-desconhecido")).toBeUndefined();
   });
 
   it("recusa ids duplicados", () => {

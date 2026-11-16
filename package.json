@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "ocr:langs": "cp node_modules/@tesseract.js-data/por/4.0.0_best_int/por.traineddata.gz node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz public/tesseract/"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -72,6 +73,8 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
+    "tesseract.js": "^7.0.0",
+    "tesseract.js-core": "7.0.0",
     "turndown": "^7.2.5",
     "turndown-plugin-gfm": "^1.0.2",
     "tw-animate-css": "^1.3.4",
@@ -82,6 +85,8 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.27.2",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@tesseract.js-data/por": "^1.0.0",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",
     "@types/node": "^22.16.5",

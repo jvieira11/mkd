@@ -6,6 +6,7 @@ import { xlsxConverter } from "./xlsx";
 import { jsonConverter } from "./json";
 import { textConverter } from "./text";
 import { htmlConverter } from "./html";
+import { imageConverter } from "./image";
 
 /** Registro global. A ordem define a ordem de exibição na interface. */
 export const registry = new ConverterRegistry()
@@ -15,7 +16,8 @@ export const registry = new ConverterRegistry()
   .register(xlsxConverter)
   .register(jsonConverter)
   .register(textConverter)
-  .register(htmlConverter);
+  .register(htmlConverter)
+  .register(imageConverter);
 
 export { convertFile } from "./convert";
 export type * from "./types";

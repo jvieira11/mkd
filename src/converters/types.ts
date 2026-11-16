@@ -47,6 +47,8 @@ export interface ConversionProgress {
   total: number;
   /** Unidade exibida na interface, ex.: "página". */
   unit: string;
+  /** Texto que substitui o padrão "Lendo <unidade> X de Y", ex.: etapa de OCR. */
+  detail?: string | undefined;
 }
 
 /** Contexto entregue ao conversor junto com o arquivo. */

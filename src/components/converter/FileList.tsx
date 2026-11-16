@@ -38,7 +38,7 @@ export function FileList({ items, selectedId, onSelect, onRemove }: FileListProp
               <p className="truncate text-xs text-muted-foreground">
                 {formatBytes(item.file.size)}
                 {item.status === "converting" && item.progress
-                  ? ` · ${item.progress.unit} ${item.progress.done} de ${item.progress.total}`
+                  ? ` · ${item.progress.detail ?? `${item.progress.unit} ${item.progress.done} de ${item.progress.total}`}`
                   : ""}
                 {item.status === "error" || item.status === "unsupported" ? ` · ${item.error}` : ""}
                 {item.status === "done" && item.result?.warnings.length

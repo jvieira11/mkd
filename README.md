@@ -1,6 +1,6 @@
 # mkd: arquivos para Markdown
 
-Converte **PDF, Word (.docx), Google Docs (.docx/.odt), Excel (.xlsx), JSON, TXT e HTML** para Markdown.
+Converte **PDF (inclusive escaneado), imagens, Word (.docx), Google Docs (.docx/.odt), Excel (.xlsx), JSON, TXT e HTML** para Markdown.
 Tudo roda no navegador: nenhum arquivo é enviado para servidores.
 
 ## Como funciona
@@ -9,6 +9,8 @@ Tudo roda no navegador: nenhum arquivo é enviado para servidores.
 - `src/components/converter/`: upload, lista de arquivos, painel de opções e prévia.
 - `src/routes/index.tsx`: página principal.
 - `src/test/converters/`: testes (`bun run test`).
+
+**OCR (imagens e PDFs escaneados):** usa Tesseract.js no navegador (`src/lib/ocr.ts`). O núcleo WebAssembly sai do `node_modules` no build, e os modelos de português e inglês ficam em `public/tesseract/` (para atualizar: `bun run ocr:langs`). Nada é baixado de CDN externa. O texto reconhecido passa pelo mesmo motor de layout do PDF (`pdf-layout.ts`), que detecta títulos, parágrafos, listas e tabelas.
 
 **Para adicionar um formato:** crie `src/converters/<formato>.ts` exportando um `Converter` e registre-o em `src/converters/index.ts`.
 A interface (aceitar o arquivo, opções, prévia e download) se ajusta sozinha.

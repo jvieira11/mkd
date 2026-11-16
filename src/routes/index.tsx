@@ -37,13 +37,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Converta PDF, Word, Google Docs, Excel, JSON e TXT para Markdown direto no navegador.",
+          "Converta PDF (inclusive escaneado), imagens, Word, Google Docs, Excel, JSON e TXT para Markdown direto no navegador.",
       },
       { property: "og:title", content: "mkd — Arquivos para Markdown" },
       {
         property: "og:description",
         content:
-          "Converta PDF, Word, Google Docs, Excel, JSON e TXT para Markdown direto no navegador.",
+          "Converta PDF (inclusive escaneado), imagens, Word, Google Docs, Excel, JSON e TXT para Markdown direto no navegador.",
       },
     ],
   }),
@@ -120,8 +120,8 @@ function Index() {
                 Qualquer arquivo em <span className="text-brand">Markdown limpo</span>
               </h1>
               <p className="text-balance text-muted-foreground sm:text-lg">
-                PDF, Word, Google Docs, planilhas, JSON e texto, convertidos direto no navegador.
-                Nada é enviado para servidores.
+                PDF (inclusive escaneado), imagens, Word, Google Docs, planilhas, JSON e texto,
+                convertidos direto no navegador. Nada é enviado para servidores.
               </p>
             </div>
             <DropZone accept={registry.acceptAttribute()} onFiles={onFiles} />
@@ -272,7 +272,7 @@ function ConvertingState({ progress }: { progress: ConversionProgress | undefine
       <div className="flex items-center gap-2">
         <Loader2 className="h-4 w-4 animate-spin" />
         {progress
-          ? `Lendo ${progress.unit} ${progress.done} de ${progress.total}…`
+          ? (progress.detail ?? `Lendo ${progress.unit} ${progress.done} de ${progress.total}…`)
           : "Convertendo…"}
       </div>
       {percent !== null && <Progress value={percent} className="h-1.5 w-64 max-w-full" />}

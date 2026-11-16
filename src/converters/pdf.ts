@@ -1,5 +1,11 @@
 import type { Converter } from "./types";
 import { groupLines, pdfLinesToMarkdown, type PdfLine, type PdfLayoutOptions } from "./pdf-layout";
+import { OCR_LANGUAGE_CHOICES, createOcrEngine, type OcrEngine, type OcrLanguage } from "@/lib/ocr";
+
+/** Páginas com menos caracteres que isso são tratadas como digitalizadas (imagem). */
+const MIN_TEXT_CHARS = 20;
+/** Resolução de renderização para OCR: largura alvo em pixels de uma página. */
+const OCR_TARGET_WIDTH = 2200;
 
 export const pdfConverter: Converter = {
   id: "pdf",
@@ -24,6 +30,24 @@ export const pdfConverter: Converter = {
         { value: "rule", label: "Linha horizontal (---)" },
         { value: "comment", label: "Comentário <!-- página N -->" },
       ],
+    },
+    {
+      type: "select",
+      key: "ocr",
+      label: "Reconhecer texto em páginas escaneadas (OCR)",
+      description: "Páginas que são só imagem passam por reconhecimento de texto. É mais lento.",
+      default: "auto",
+      choices: [
+        { value: "auto", label: "Automático (só páginas sem texto)" },
+        { value: "off", label: "Desligado" },
+      ],
+    },
+    {
+      type: "select",
+      key: "ocrLang",
+      label: "Idioma para OCR",
+      default: "por",
+      choices: OCR_LANGUAGE_CHOICES,
     },
     {
       type: "select",
@@ -55,6 +79,10 @@ export const pdfConverter: Converter = {
 
     const warnings: string[] = [];
     const pageLines: PdfLine[][] = [];
+    const useOcr = options["ocr"] !== "off";
+    let ocr: OcrEngine | null = null;
+    const ocrPages: number[] = [];
+    let ocrConfidence = 0;
     try {
       const pdf = await task.promise;
       const limit = options["maxPages"] === "all" ? Infinity : Number(options["maxPages"]);
@@ -81,8 +109,39 @@ export const pdfConverter: Converter = {
               height: item.height || Math.abs(d),
             });
           }
-          // Agrupa em linhas já aqui: guarda muito menos dados que os itens brutos.
-          pageLines.push(groupLines(items));
+          const chars = items.reduce((n, i) => n + i.str.trim().length, 0);
+          if (useOcr && chars < MIN_TEXT_CHARS) {
+            // Página escaneada: desenha em alta resolução e reconhece o texto.
+            const report = (fraction: number) =>
+              onProgress({
+                done: n - 1,
+                total,
+                unit: "página",
+                detail: `Reconhecendo texto (OCR) · página ${n} de ${total} · ${Math.round(fraction * 100)}%`,
+              });
+            report(0);
+            ocr ??= await createOcrEngine(
+              (options["ocrLang"] as OcrLanguage) ?? "por",
+              signal,
+              (f) => report(f),
+            );
+            const base = page.getViewport({ scale: 1 });
+            const scale = Math.min(4, Math.max(1.5, OCR_TARGET_WIDTH / base.width));
+            const viewport = page.getViewport({ scale });
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.ceil(viewport.width);
+            canvas.height = Math.ceil(viewport.height);
+            await page.render({ canvas, viewport, background: "#ffffff" }).promise;
+            // `scale` devolve as coordenadas para pontos do PDF, como nas páginas com texto.
+            const result = await ocr.recognize(canvas, scale);
+            canvas.width = canvas.height = 0; // libera a memória do canvas
+            ocrPages.push(n);
+            ocrConfidence += result.confidence;
+            pageLines.push(groupLines(result.items));
+          } else {
+            // Agrupa em linhas já aqui: guarda muito menos dados que os itens brutos.
+            pageLines.push(groupLines(items));
+          }
           page.cleanup();
         } catch (error) {
           signal.throwIfAborted();
@@ -94,6 +153,14 @@ export const pdfConverter: Converter = {
     } finally {
       signal.removeEventListener("abort", abort);
       await task.destroy();
+      await (ocr as OcrEngine | null)?.terminate();
+    }
+
+    if (ocrPages.length) {
+      const avg = Math.round(ocrConfidence / ocrPages.length);
+      warnings.push(
+        `${ocrPages.length === 1 ? "1 página reconhecida" : `${ocrPages.length} páginas reconhecidas`} por OCR (confiança média ${avg}%). Revise o texto dessas páginas.`,
+      );
     }
 
     const markdown = pdfLinesToMarkdown(pageLines, {
@@ -102,7 +169,9 @@ export const pdfConverter: Converter = {
     });
     if (!markdown.trim()) {
       warnings.push(
-        "Nenhum texto encontrado. O PDF provavelmente é escaneado (imagem); reconhecimento de texto (OCR) ainda não é suportado.",
+        useOcr
+          ? "Nenhum texto encontrado, nem com reconhecimento de texto (OCR)."
+          : "Nenhum texto encontrado. O PDF parece escaneado: ative o OCR nas opções.",
       );
     }
     return { markdown, assets: [], warnings };

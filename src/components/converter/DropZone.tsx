@@ -59,7 +59,7 @@ export function DropZone({ accept, onFiles, compact }: DropZoneProps) {
         </p>
         {!compact && (
           <p className="mt-1 text-sm text-muted-foreground">
-            Vários arquivos de uma vez · PDF, DOCX, ODT, XLSX, JSON, TXT e HTML
+            Vários arquivos de uma vez · PDF, imagens, DOCX, ODT, XLSX, JSON, TXT e HTML
           </p>
         )}
       </div>
