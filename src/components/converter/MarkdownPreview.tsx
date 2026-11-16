@@ -14,6 +14,25 @@ interface MarkdownPreviewProps {
   result: ConversionResult;
 }
 
+/** Limites da prévia: documentos enormes travariam o navegador. Copiar e baixar usam o texto todo. */
+const CODE_PREVIEW_LIMIT = 500_000;
+const RENDER_PREVIEW_LIMIT = 150_000;
+
+function truncate(markdown: string, limit: number): string {
+  if (markdown.length <= limit) return markdown;
+  const cut = markdown.lastIndexOf("\n", limit);
+  return markdown.slice(0, cut > 0 ? cut : limit);
+}
+
+function TruncatedNotice({ limit }: { limit: number }) {
+  return (
+    <p className="mb-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+      Documento grande: a prévia mostra os primeiros {limit.toLocaleString("pt-BR")} caracteres.
+      Copiar e baixar incluem o documento inteiro.
+    </p>
+  );
+}
+
 export function MarkdownPreview({ fileName, result }: MarkdownPreviewProps) {
   const [copied, setCopied] = useState(false);
   const assetUrls = useAssetUrls(fileName, result);
@@ -66,17 +85,23 @@ export function MarkdownPreview({ fileName, result }: MarkdownPreviewProps) {
       )}
 
       <TabsContent value="code" className="min-h-0 flex-1">
+        {result.markdown.length > CODE_PREVIEW_LIMIT && (
+          <TruncatedNotice limit={CODE_PREVIEW_LIMIT} />
+        )}
         <pre className="h-full max-h-[70vh] overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/40 p-4 font-mono text-[13px] leading-relaxed">
-          {result.markdown}
+          {truncate(result.markdown, CODE_PREVIEW_LIMIT)}
         </pre>
       </TabsContent>
       <TabsContent value="preview" className="min-h-0 flex-1">
+        {result.markdown.length > RENDER_PREVIEW_LIMIT && (
+          <TruncatedNotice limit={RENDER_PREVIEW_LIMIT} />
+        )}
         <article className="prose prose-sm prose-zinc max-h-[70vh] max-w-none overflow-auto rounded-md border p-5 dark:prose-invert prose-table:text-xs prose-img:rounded-md">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             urlTransform={(url) => assetUrls.get(url) ?? defaultUrlTransform(url)}
           >
-            {result.markdown}
+            {truncate(result.markdown, RENDER_PREVIEW_LIMIT)}
           </ReactMarkdown>
         </article>
       </TabsContent>

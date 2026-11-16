@@ -1,17 +1,32 @@
-import type { Converter, ConversionResult, ConverterOptionValues } from "./types";
+import type {
+  Converter,
+  ConversionProgress,
+  ConversionResult,
+  ConverterOptionValues,
+} from "./types";
 import { getBaseName } from "./registry";
 import { normalizeMarkdown } from "@/lib/markdown";
+
+export interface ConvertFileExtras {
+  onProgress?: (progress: ConversionProgress) => void;
+  signal?: AbortSignal;
+}
 
 /** Executa um conversor e aplica o pós-processamento comum a todos os formatos. */
 export async function convertFile(
   converter: Converter,
   file: File,
   options: ConverterOptionValues,
+  extras: ConvertFileExtras = {},
 ): Promise<ConversionResult> {
+  const signal = extras.signal ?? new AbortController().signal;
   const result = await converter.convert(file, {
     options,
     assetDir: assetDirFor(file.name),
+    onProgress: extras.onProgress ?? (() => {}),
+    signal,
   });
+  signal.throwIfAborted();
   return { ...result, markdown: normalizeMarkdown(result.markdown) };
 }
 

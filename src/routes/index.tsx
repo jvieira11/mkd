@@ -11,6 +11,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import type { ConversionProgress } from "@/converters/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { downloadAll } from "@/lib/download";
 
@@ -185,9 +187,7 @@ function Index() {
                       )}
                     </div>
                   ) : (
-                    <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Convertendo…
-                    </div>
+                    <ConvertingState progress={selected?.progress} />
                   )}
                 </CardContent>
               </Card>
@@ -196,6 +196,21 @@ function Index() {
         )}
       </main>
       <Toaster theme={theme} />
+    </div>
+  );
+}
+
+function ConvertingState({ progress }: { progress: ConversionProgress | undefined }) {
+  const percent = progress && progress.total > 0 ? (progress.done / progress.total) * 100 : null;
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+      <div className="flex items-center gap-2">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        {progress
+          ? `Lendo ${progress.unit} ${progress.done} de ${progress.total}…`
+          : "Convertendo…"}
+      </div>
+      {percent !== null && <Progress value={percent} className="h-1.5 w-64 max-w-full" />}
     </div>
   );
 }

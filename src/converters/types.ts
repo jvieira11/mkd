@@ -41,9 +41,21 @@ export interface ConversionResult {
   warnings: string[];
 }
 
+/** Andamento de uma conversão longa (ex.: páginas de um PDF). */
+export interface ConversionProgress {
+  done: number;
+  total: number;
+  /** Unidade exibida na interface, ex.: "página". */
+  unit: string;
+}
+
 /** Contexto entregue ao conversor junto com o arquivo. */
 export interface ConversionContext {
   options: ConverterOptionValues;
+  /** Informe o andamento em conversões demoradas. Chamadas frequentes são aceitáveis. */
+  onProgress: (progress: ConversionProgress) => void;
+  /** Cancelado quando o usuário remove o arquivo; verifique em laços longos. */
+  signal: AbortSignal;
   /**
    * Pasta relativa onde os assets devem ser referenciados no Markdown,
    * ex.: "relatorio_assets". Use `${assetDir}/${asset.name}` nos links.

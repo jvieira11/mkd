@@ -2,6 +2,7 @@ import { AlertCircle, CheckCircle2, FileText, Loader2, X } from "lucide-react";
 import type { ConversionItem } from "@/hooks/use-conversions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/format";
 
@@ -36,11 +37,21 @@ export function FileList({ items, selectedId, onSelect, onRemove }: FileListProp
               </p>
               <p className="truncate text-xs text-muted-foreground">
                 {formatBytes(item.file.size)}
+                {item.status === "converting" && item.progress
+                  ? ` · ${item.progress.unit} ${item.progress.done} de ${item.progress.total}`
+                  : ""}
                 {item.status === "error" || item.status === "unsupported" ? ` · ${item.error}` : ""}
                 {item.status === "done" && item.result?.warnings.length
                   ? ` · ${item.result.warnings.length} aviso(s)`
                   : ""}
               </p>
+              {item.status === "converting" && item.progress && item.progress.total > 0 && (
+                <Progress
+                  value={(item.progress.done / item.progress.total) * 100}
+                  className="mt-1.5 h-1"
+                  aria-label={`Progresso de ${item.file.name}`}
+                />
+              )}
             </div>
             {item.converter && (
               <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">
