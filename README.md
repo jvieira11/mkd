@@ -1,6 +1,17 @@
-# Blank Canvas
+# mkd: arquivos para Markdown
 
-projeto em branco
+Converte **PDF, Word (.docx), Google Docs (.docx/.odt), Excel (.xlsx), JSON, TXT e HTML** para Markdown.
+Tudo roda no navegador: nenhum arquivo é enviado para servidores.
+
+## Como funciona
+
+- `src/converters/`: núcleo expansível, sem dependência de React. Cada formato é um `Converter` (veja `types.ts`) registrado em `index.ts`.
+- `src/components/converter/`: upload, lista de arquivos, painel de opções e prévia.
+- `src/routes/index.tsx`: página principal.
+- `src/test/converters/`: testes (`bun run test`).
+
+**Para adicionar um formato:** crie `src/converters/<formato>.ts` exportando um `Converter` e registre-o em `src/converters/index.ts`.
+A interface (aceitar o arquivo, opções, prévia e download) se ajusta sozinha.
 
 This project was built with [Lovable](https://lovable.dev).
 
