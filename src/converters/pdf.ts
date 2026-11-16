@@ -1,9 +1,22 @@
 import type { Converter } from "./types";
-import { groupLines, pdfLinesToMarkdown, type PdfLine, type PdfLayoutOptions } from "./pdf-layout";
+import {
+  groupLines,
+  markOcr,
+  pdfLinesToMarkdown,
+  type PdfLine,
+  type PdfLayoutOptions,
+} from "./pdf-layout";
+import { largestImageCoverage } from "./pdf-images";
 import { OCR_LANGUAGE_CHOICES, createOcrEngine, type OcrEngine, type OcrLanguage } from "@/lib/ocr";
 
 /** Páginas com menos caracteres que isso são tratadas como digitalizadas (imagem). */
 const MIN_TEXT_CHARS = 20;
+/**
+ * Páginas com pouco texto real (até isso) e uma imagem cobrindo boa parte da página
+ * também são escaneadas: o texto é só um carimbo por cima ("Baixado em", nº da página).
+ */
+const SCANNED_MAX_TEXT_CHARS = 400;
+const SCANNED_MIN_IMAGE_COVERAGE = 0.5;
 /** Resolução de renderização para OCR: largura alvo em pixels de uma página. */
 const OCR_TARGET_WIDTH = 2200;
 
@@ -110,7 +123,33 @@ export const pdfConverter: Converter = {
             });
           }
           const chars = items.reduce((n, i) => n + i.str.trim().length, 0);
-          if (useOcr && chars < MIN_TEXT_CHARS) {
+          let scanned = chars < MIN_TEXT_CHARS;
+          if (useOcr && !scanned && chars <= SCANNED_MAX_TEXT_CHARS) {
+            const { fnArray, argsArray } = await page.getOperatorList();
+            const { OPS } = pdfjs;
+            const view = page.getViewport({ scale: 1 });
+            const coverage = largestImageCoverage(
+              fnArray,
+              argsArray as unknown[][],
+              {
+                save: OPS.save,
+                restore: OPS.restore,
+                transform: OPS.transform,
+                formBegin: OPS.paintFormXObjectBegin,
+                formEnd: OPS.paintFormXObjectEnd,
+                images: [
+                  OPS.paintImageXObject,
+                  OPS.paintInlineImageXObject,
+                  OPS.paintImageMaskXObject,
+                ],
+              },
+              view.width * view.height,
+            );
+            scanned = coverage >= SCANNED_MIN_IMAGE_COVERAGE;
+          }
+          if (useOcr && scanned) {
+            // O OCR lê a página inteira, inclusive o texto real por cima da imagem,
+            // então ele substitui (não soma) o texto extraído, evitando duplicação.
             // Página escaneada: desenha em alta resolução e reconhece o texto.
             const report = (fraction: number) =>
               onProgress({
@@ -137,7 +176,7 @@ export const pdfConverter: Converter = {
             canvas.width = canvas.height = 0; // libera a memória do canvas
             ocrPages.push(n);
             ocrConfidence += result.confidence;
-            pageLines.push(groupLines(result.items));
+            pageLines.push(markOcr(groupLines(result.items)));
           } else {
             // Agrupa em linhas já aqui: guarda muito menos dados que os itens brutos.
             pageLines.push(groupLines(items));

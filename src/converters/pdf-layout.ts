@@ -35,9 +35,16 @@ export interface PdfLine {
   /** Posição horizontal onde a linha termina. */
   right: number;
   segments: Segment[];
+  /** Linha vinda de OCR: medidas de altura menos precisas (ver `headingLevel`). */
+  ocr?: boolean | undefined;
 }
 
 type Line = PdfLine;
+
+/** Marca linhas reconhecidas por OCR. */
+export function markOcr(lines: PdfLine[]): PdfLine[] {
+  return lines.map((line) => ({ ...line, ocr: true }));
+}
 
 /** Espaço horizontal (em múltiplos da altura da fonte) a partir do qual começa outra coluna. */
 const COLUMN_GAP = 0.6;
@@ -140,7 +147,9 @@ function dominantSize(lines: Line[]): number {
 
 function headingLevel(line: Line, bodySize: number): number {
   if (line.text.length > 120 || /[.,;:]$/.test(line.text)) return 0;
-  const ratio = line.size / bodySize;
+  // No OCR a altura medida varia bastante (ex.: linhas em maiúsculas parecem maiores),
+  // então exige uma diferença de tamanho maior para virar título.
+  const ratio = line.size / bodySize / (line.ocr ? 1.25 : 1);
   if (ratio >= 1.6) return 1;
   if (ratio >= 1.3) return 2;
   if (ratio >= 1.12) return 3;
@@ -156,6 +165,11 @@ function linesToBlocks(lines: Line[], bodySize: number, detectTables: boolean): 
   const textWidth = Math.max(...lines.map((l) => l.right)) - left;
   const endsEarly = (l: Line) =>
     textWidth > 0 && l.right - left < textWidth * 0.7 && !/-$/.test(l.text);
+  // Entrelinha local: em documentos com espaçamento largo (comum em digitalizações),
+  // cada linha não deve virar um parágrafo novo. Compara o espaço até a linha anterior
+  // com o espaço até a próxima e com o espaço já usado dentro do parágrafo atual.
+  let paragraphGap = 0;
+  let lastPitch = 0; // entrelinha do último parágrafo, quando não há vizinho para comparar
   let prev: Line | null = null;
 
   const flush = () => {
@@ -197,15 +211,26 @@ function linesToBlocks(lines: Line[], bodySize: number, detectTables: boolean): 
     const isBullet = BULLET.test(line.text);
     const isNumbered = NUMBERED.test(line.text);
     const gap = prev ? prev.y - line.y : 0;
+    const next = lines[i + 1];
+    const nextGap =
+      next && Math.abs(next.size - line.size) <= line.size * 0.2 ? line.y - next.y : 0;
+    const local = Math.min(...[paragraphGap, nextGap].filter((g) => g > 0), Infinity);
+    const pitch = Number.isFinite(local) ? local : lastPitch;
     const newBlock =
       !prev ||
       headingLevel(prev, bodySize) > 0 ||
-      gap > Math.max(line.size, bodySize) * 1.6 ||
+      gap > Math.max(Math.max(line.size, bodySize) * 1.6, pitch * 1.4) ||
       endsEarly(prev) ||
       isBullet ||
       isNumbered;
 
-    if (newBlock) flush();
+    if (newBlock) {
+      flush();
+      paragraphGap = 0;
+    } else if (gap > 0) {
+      paragraphGap = paragraphGap ? Math.min(paragraphGap, gap) : gap;
+      lastPitch = paragraphGap;
+    }
 
     const text = isBullet ? line.text.replace(BULLET, "- ") : line.text;
     paragraph.push(text);
@@ -276,6 +301,14 @@ export function findTable(lines: Line[], start: number): TableMatch | null {
   const columns = reference.segments.map((seg) => ({ x: seg.x, right: seg.right }));
   const tolerance = reference.size * 1.5;
 
+  // Em tabelas, as células se alinham com as colunas pela esquerda, pela direita ou
+  // pelo centro. Em texto justificado, as palavras do meio caem em posições aleatórias.
+  const alignTolerance = reference.size * 0.5;
+  const aligned = (seg: Segment, col: { x: number; right: number }) =>
+    Math.abs(seg.x - col.x) <= alignTolerance ||
+    Math.abs(seg.right - col.right) <= alignTolerance ||
+    Math.abs((seg.x + seg.right) / 2 - (col.x + col.right) / 2) <= alignTolerance;
+  let misaligned = 0;
   let misses = 0;
   let total = 0;
   const words: number[] = [];
@@ -292,6 +325,7 @@ export function findTable(lines: Line[], start: number): TableMatch | null {
         if (overlap > bestOverlap) [best, bestOverlap] = [c, overlap];
       });
       if (bestOverlap <= 0) misses++;
+      else if (line !== reference && !aligned(seg, columns[best]!)) misaligned++;
       cells[best] = cells[best] ? `${cells[best]} ${seg.text}` : seg.text;
     }
     return cells;
@@ -300,6 +334,10 @@ export function findTable(lines: Line[], start: number): TableMatch | null {
   // Rejeita quando as colunas não se alinham ou quando os "segmentos" são frases longas
   // (provável página com duas colunas de texto, não uma tabela).
   if (misses > total * 0.2) return null;
+  const compared = total - reference.segments.length;
+  // Com só duas linhas, a coincidência é mais provável: exige alinhamento quase total.
+  const maxMisaligned = run.length === 2 ? 0.1 : 0.25;
+  if (compared > 0 && misaligned > compared * maxMisaligned) return null;
   const sortedWords = [...words].sort((a, b) => a - b);
   const median = sortedWords[Math.floor(sortedWords.length / 2)] ?? 0;
   if (median > 6) return null;

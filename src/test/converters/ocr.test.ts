@@ -101,6 +101,75 @@ describe("OCR → Markdown", () => {
     expect(confidence).toBe(95);
   });
 
+  it("descarta linhas muito menos confiáveis que o resto (brasões, assinaturas)", () => {
+    const withConfidence = (l: ReturnType<typeof line>, confidence: number) => ({
+      ...l,
+      confidence,
+    });
+    const { items } = ocrPageToItems(
+      page([
+        withConfidence(
+          line(
+            100,
+            24,
+            [
+              ["Texto", 100, 70],
+              ["real", 180, 50],
+            ],
+            95,
+          ),
+          95,
+        ),
+        withConfidence(
+          line(
+            130,
+            24,
+            [
+              ["outra", 100, 70],
+              ["linha", 180, 60],
+            ],
+            96,
+          ),
+          96,
+        ),
+        withConfidence(
+          line(
+            160,
+            24,
+            [
+              ["mais", 100, 60],
+              ["uma", 170, 50],
+            ],
+            94,
+          ),
+          94,
+        ),
+        withConfidence(
+          line(
+            300,
+            60,
+            [
+              ["SS", 600, 40],
+              ["7", 650, 10],
+              ["Pp", 670, 30],
+            ],
+            60,
+          ),
+          41,
+        ),
+      ]),
+      1000,
+    );
+    expect(items.map((i) => i.str.trim())).toEqual([
+      "Texto",
+      "real",
+      "outra",
+      "linha",
+      "mais",
+      "uma",
+    ]);
+  });
+
   it("detecta tabelas em imagens", () => {
     const md = toMarkdown(
       page([

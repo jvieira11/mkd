@@ -111,6 +111,7 @@ export interface OcrBlock {
     lines: {
       bbox: { x0: number; y0: number; x1: number; y1: number };
       rowAttributes?: { rowHeight: number } | undefined;
+      confidence?: number | undefined;
       words: {
         text: string;
         confidence: number;
@@ -129,10 +130,20 @@ export function ocrPageToItems(blocks: OcrBlock[], imageHeight: number, scale = 
   const items: PdfTextItem[] = [];
   let confidenceSum = 0;
   const lines = blocks.flatMap((b) => b.paragraphs.flatMap((p) => p.lines));
+  // Linhas muito menos confiáveis que o resto da página costumam ser brasões,
+  // assinaturas e carimbos lidos como texto. O limite é relativo à página para
+  // não descartar tudo em digitalizações ruins.
+  const confidences = lines
+    .map((l) => l.confidence)
+    .filter((c): c is number => typeof c === "number")
+    .sort((a, b) => a - b);
+  const median = confidences[Math.floor(confidences.length / 2)] ?? 0;
+  const minLineConfidence = confidences.length >= 3 ? Math.min(70, median - 20) : 0;
   for (const block of blocks) {
     for (const paragraph of block.paragraphs) {
       for (const line of paragraph.lines) {
         if (isPhantomLine(line, lines)) continue;
+        if ((line.confidence ?? 100) < minLineConfidence) continue;
         // Todas as palavras da linha compartilham a mesma base e altura,
         // para não serem separadas por ascendentes/descendentes diferentes.
         const height = line.rowAttributes?.rowHeight || line.bbox.y1 - line.bbox.y0;

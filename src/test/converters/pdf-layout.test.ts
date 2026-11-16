@@ -209,4 +209,55 @@ describe("pdf-layout", () => {
       expect(md).toContain("Produto Qtd");
     });
   });
+
+  describe("documentos digitalizados", () => {
+    const words = (y: number, list: [string, number][], size = 10): PdfTextItem[] =>
+      list.map(([str, x]) => ({ str, x, y, width: str.length * size * 0.6, height: size }));
+
+    it("texto justificado com espaços largos não vira tabela", () => {
+      const items = [
+        ...words(700, [
+          ["DISPÕE", 50],
+          ["SOBRE", 130],
+          ["A", 200],
+          ["FIXAÇÃO", 240],
+          ["DE", 330],
+          ["CARTAZ", 380],
+        ]),
+        ...words(686, [
+          ["REVENDEDORAS", 50],
+          ["E", 175],
+          ["CONCESSIONÁRIAS", 215],
+          ["DE", 340],
+          ["VEÍCULOS", 375],
+        ]),
+        ...words(672, [
+          ["PESSOAS", 50],
+          ["COM", 120],
+          ["DEFICIÊNCIA", 165],
+          ["E", 255],
+          ["MOLÉSTIAS", 290],
+          ["GRAVES", 368],
+        ]),
+      ];
+      const md = pdfPagesToMarkdown([items], { pageBreak: "none", tables: true });
+      expect(md).not.toContain("|");
+      expect(md).toContain("DISPÕE SOBRE A FIXAÇÃO DE CARTAZ REVENDEDORAS");
+    });
+
+    it("entrelinha larga não quebra cada linha em um parágrafo", () => {
+      // Entrelinha de 19 (1,9× a fonte) dentro dos parágrafos; 40 entre eles.
+      const line = (y: number, str: string) => ({ str, x: 50, y, width: 400, height: 10 });
+      const items = [
+        line(700, "Art. 1º Ficam as revendedoras e concessionárias de veículos sediadas em"),
+        line(681, "todo o Município, obrigadas a fixar, em local de fácil visualização, cartaz"),
+        line(662, "informando aos consumidores as isenções de impostos garantidos por lei."),
+        line(622, "Parágrafo único. O cartaz deverá ter a medida mínima de uma folha A4,"),
+        line(603, "com escrita legível, contendo a informação sobre o direito à isenção."),
+      ];
+      const md = pdfPagesToMarkdown([items], { pageBreak: "none", tables: true });
+      expect(md.split("\n\n")).toHaveLength(2);
+      expect(md).toMatch(/^Art\. 1º .* por lei\.\n\nParágrafo único\./);
+    });
+  });
 });

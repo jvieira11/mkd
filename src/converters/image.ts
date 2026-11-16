@@ -1,5 +1,5 @@
 import type { Converter } from "./types";
-import { groupLines, pdfLinesToMarkdown } from "./pdf-layout";
+import { groupLines, markOcr, pdfLinesToMarkdown } from "./pdf-layout";
 import { OCR_LANGUAGE_CHOICES, createOcrEngine, imageToCanvas, type OcrLanguage } from "@/lib/ocr";
 
 /** Imagens (prints, fotos de documentos, digitalizações) convertidas por OCR. */
@@ -47,7 +47,7 @@ export const imageConverter: Converter = {
       await ocr.terminate();
     }
 
-    const markdown = pdfLinesToMarkdown([groupLines(result.items)], {
+    const markdown = pdfLinesToMarkdown([markOcr(groupLines(result.items))], {
       pageBreak: "none",
       tables: options["tables"] !== false,
     });
