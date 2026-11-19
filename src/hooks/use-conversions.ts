@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { convertFile, registry } from "@/converters";
+import { translateError } from "@/lib/messages";
 import type {
   ConversionProgress,
   ConversionResult,
@@ -76,7 +77,7 @@ export function useConversions() {
           status: "error",
           result: undefined,
           progress: undefined,
-          error: error instanceof Error ? error.message : String(error),
+          error: translateError(error),
         });
       } finally {
         if (controllers.current.get(item.id) === controller) controllers.current.delete(item.id);

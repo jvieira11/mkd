@@ -6,6 +6,7 @@ import type {
 } from "./types";
 import { getBaseName } from "./registry";
 import { normalizeMarkdown } from "@/lib/markdown";
+import { summarizeWarnings } from "@/lib/messages";
 
 export interface ConvertFileExtras {
   onProgress?: (progress: ConversionProgress) => void;
@@ -27,7 +28,12 @@ export async function convertFile(
     signal,
   });
   signal.throwIfAborted();
-  return { ...result, markdown: normalizeMarkdown(result.markdown) };
+  return {
+    ...result,
+    markdown: normalizeMarkdown(result.markdown),
+    // Toda mensagem chega ao usuário em português, agrupada e sem repetições.
+    warnings: summarizeWarnings(result.warnings),
+  };
 }
 
 export function assetDirFor(fileName: string): string {

@@ -29,7 +29,7 @@ export const jsonConverter: Converter = {
       data = parseJsonOrLines(text, file instanceof File ? file.name : "");
     } catch (error) {
       warnings.push(
-        `JSON inválido: ${(error as Error).message}. O conteúdo foi mantido como bloco de código.`,
+        `${describeJsonError(error, text)} O conteúdo foi mantido como bloco de código.`,
       );
       return { markdown: fence(text, "json"), assets: [], warnings };
     }
@@ -93,3 +93,23 @@ export function jsonToMarkdown(data: Json, depth = 1): string {
 }
 
 const heading = (depth: number) => "#".repeat(Math.min(depth, 6));
+
+/** Explica em português onde está o erro de sintaxe do JSON (linha e coluna). */
+function describeJsonError(error: unknown, text: string): string {
+  const message = error instanceof Error ? error.message : "";
+  const position = Number(message.match(/position (\d+)/i)?.[1]);
+  const lineCol = message.match(/line (\d+) column (\d+)/i);
+  let where = "";
+  if (lineCol) where = ` (linha ${lineCol[1]}, coluna ${lineCol[2]})`;
+  else if (Number.isFinite(position)) {
+    const before = text.slice(0, position).split("\n");
+    where = ` (linha ${before.length}, coluna ${(before[before.length - 1] ?? "").length + 1})`;
+  } else if (/end of (JSON|data) input|Unexpected end/i.test(message)) {
+    where = " (o arquivo termina antes do esperado: falta fechar chaves, colchetes ou aspas)";
+  } else {
+    // Chrome recente não informa a posição, só o caractere: "Unexpected token ','".
+    const token = message.match(/Unexpected (?:token|character) ['"]?(.)['"]?/i)?.[1];
+    if (token) where = `: caractere inesperado “${token}”`;
+  }
+  return `JSON inválido${where}.`;
+}

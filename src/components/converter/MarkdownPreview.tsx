@@ -74,7 +74,8 @@ export function MarkdownPreview({ fileName, result }: MarkdownPreviewProps) {
       {result.warnings.length > 0 && (
         <details className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm">
           <summary className="cursor-pointer font-medium text-amber-700 dark:text-amber-400">
-            {result.warnings.length} aviso(s) da conversão
+            {result.warnings.length === 1 ? "1 aviso" : `${result.warnings.length} avisos`} da
+            conversão
           </summary>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
             {result.warnings.slice(0, 20).map((w, i) => (

@@ -42,7 +42,9 @@ describe("json", () => {
 
   it("JSON inválido não quebra: vira bloco de código com aviso", async () => {
     const r = await convert(new File(["{ruim"], "a.json"));
-    expect(r.warnings[0]).toMatch(/JSON inválido/);
+    expect(r.warnings[0]).toMatch(
+      /^JSON inválido \(linha 1, coluna \d+\)\. O conteúdo foi mantido/,
+    );
     expect(r.markdown).toContain("```json");
   });
 

@@ -39,7 +39,7 @@ export const docxConverter: Converter = {
 
     // Imagens descartadas ficam com src vazio; remova-as antes do Turndown.
     const html = result.value.replace(/<img[^>]*src=""[^>]*>/g, "");
-    const warnings = [...new Set(result.messages.map((m) => m.message))];
+    const warnings = result.messages.map((m) => m.message);
     return { markdown: htmlToMarkdown(html), assets, warnings };
   },
 };

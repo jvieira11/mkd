@@ -184,7 +184,7 @@ export const pdfConverter: Converter = {
           page.cleanup();
         } catch (error) {
           signal.throwIfAborted();
-          warnings.push(`Página ${n} não pôde ser lida: ${(error as Error).message}`);
+          warnings.push(`A página ${n} não pôde ser lida e ficou de fora do resultado.`);
           pageLines.push([]);
         }
         onProgress({ done: n, total, unit: "página" });

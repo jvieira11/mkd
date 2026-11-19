@@ -42,7 +42,7 @@ export function FileList({ items, selectedId, onSelect, onRemove }: FileListProp
                   : ""}
                 {item.status === "error" || item.status === "unsupported" ? ` · ${item.error}` : ""}
                 {item.status === "done" && item.result?.warnings.length
-                  ? ` · ${item.result.warnings.length} aviso(s)`
+                  ? ` · ${item.result.warnings.length} ${item.result.warnings.length === 1 ? "aviso" : "avisos"}`
                   : ""}
               </p>
               {item.status === "converting" && item.progress && item.progress.total > 0 && (
