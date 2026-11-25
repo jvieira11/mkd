@@ -2,6 +2,8 @@
 export function normalizeMarkdown(markdown: string): string {
   return (
     markdown
+      // Acentos sempre na forma composta (ex.: "ç" e não "c" + cedilha combinante).
+      .normalize("NFC")
       .replace(/\r\n?/g, "\n")
       .replace(/\u00a0/g, " ")
       // espaços no fim da linha (exceto quebra de linha forçada com 2 espaços)

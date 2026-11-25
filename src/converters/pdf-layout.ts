@@ -4,6 +4,7 @@
  */
 
 import { toMarkdownTable } from "@/lib/markdown";
+import { fixDetachedDiacritics } from "@/lib/diacritics";
 
 export interface PdfTextItem {
   str: string;
@@ -116,7 +117,11 @@ export function groupLines(items: PdfTextItem[]): Line[] {
         }
       }
       const cleaned = segments
-        .map((seg) => ({ ...seg, text: seg.text.replace(/\s+/g, " ").trim() }))
+        .map((seg) => ({
+          ...seg,
+          // Acentos desenhados como glifo separado: "Prestac¸ ˜ao" → "Prestação".
+          text: fixDetachedDiacritics(seg.text.replace(/\s+/g, " ").trim()),
+        }))
         .filter((seg) => seg.text.length > 0);
       return {
         text: cleaned.map((seg) => seg.text).join(" "),

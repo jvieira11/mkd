@@ -1,3 +1,4 @@
+import { encodingNotice, readText } from "@/lib/encoding";
 import type { Converter } from "./types";
 
 export const textConverter: Converter = {
@@ -15,9 +16,10 @@ export const textConverter: Converter = {
     },
   ],
   async convert(file, { options }) {
-    const text = await file.text();
+    const { text, encoding } = await readText(file);
     const markdown = options["codeBlock"] ? fence(text, "text") : text;
-    return { markdown, assets: [], warnings: [] };
+    const notice = encodingNotice(encoding);
+    return { markdown, assets: [], warnings: notice ? [notice] : [] };
   },
 };
 

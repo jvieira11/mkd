@@ -1,3 +1,4 @@
+import { encodingNotice, readText } from "@/lib/encoding";
 import type { Converter } from "./types";
 import { fence } from "./text";
 import { toMarkdownTable } from "@/lib/markdown";
@@ -22,8 +23,9 @@ export const jsonConverter: Converter = {
     },
   ],
   async convert(file, { options }) {
-    const text = await file.text();
-    const warnings: string[] = [];
+    const { text, encoding } = await readText(file);
+    const notice = encodingNotice(encoding);
+    const warnings: string[] = notice ? [notice] : [];
     let data: Json;
     try {
       data = parseJsonOrLines(text, file instanceof File ? file.name : "");
