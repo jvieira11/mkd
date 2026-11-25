@@ -28,16 +28,40 @@ export interface TextQuality {
   garbled: boolean;
 }
 
+/** Caracteres que nunca aparecem em texto legível: controle, uso privado, substituição (�). */
+function isJunk(ch: string): boolean {
+  const code = ch.codePointAt(0) ?? 0;
+  return (
+    (code <= 0x1f && code !== 0x09 && code !== 0x0a && code !== 0x0d) ||
+    (code >= 0x7f && code <= 0x9f) ||
+    (code >= 0xe000 && code <= 0xf8ff) ||
+    code === 0xfffd
+  );
+}
+
+/** Separa palavras em caracteres de controle (fontes sem mapa usam-nos como espaço). */
+function splitOnControl(word: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  for (const ch of word) {
+    if ((ch.codePointAt(0) ?? 0) <= 0x1f) {
+      if (current) parts.push(current);
+      current = "";
+    } else current += ch;
+  }
+  if (current) parts.push(current);
+  return parts;
+}
+
 export function assessTextQuality(text: string): TextQuality {
   const chars = [...text].filter((c) => !/\s/.test(c));
-  const junk = chars.filter((c) =>
-    /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f-�]/.test(c),
-  ).length;
+  const junk = chars.filter(isJunk).length;
   const junkRatio = chars.length ? junk / chars.length : 0;
 
   const words = text
     .toLowerCase()
-    .split(/[\s\u0000-\u001f]+/)
+    .split(/\s+/)
+    .flatMap((w) => splitOnControl(w))
     .map((w) => w.replace(/^[^\p{L}]+|[^\p{L}º]+$/gu, ""))
     .filter((w) => /^\p{L}[\p{L}º]*$/u.test(w));
   const common = words.filter((w) => COMMON_WORDS.has(w)).length;
