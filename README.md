@@ -42,18 +42,19 @@ Converte PDF (inclusive escaneado), imagens, Word, Google Docs, Excel, JSON, TXT
 
 ## Funcionalidades
 
-|                                   |                                                                                                                     |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| 📂 **Vários arquivos de uma vez** | Arraste para qualquer lugar da página ou clique para escolher. A conversão roda em fila.                            |
-| 📋 **Colar com Ctrl+V**           | Cole um trecho copiado do Google Docs, do Word ou de uma página web e receba o Markdown na hora.                    |
-| 👀 **Prévia**                     | Veja o Markdown bruto ou renderizado antes de baixar.                                                               |
-| ⬇️ **Download**                   | `.md` por arquivo, ou `.zip` com tudo (e com as imagens extraídas em uma pasta).                                    |
-| 🔍 **OCR**                        | Imagens e PDFs escaneados viram texto, em português ou inglês.                                                      |
-| ⚙️ **Opções por formato**         | Ex.: detecção de tabelas, separação de páginas, limite de linhas da planilha. Mudar uma opção reconverte o arquivo. |
-| 📈 **Arquivos grandes**           | Progresso por página, cancelamento ao remover o arquivo e opção de converter só as primeiras páginas.               |
-| 🔤 **Acentuação correta**         | Arquivos em ANSI (Windows-1252) e PDFs com acentos separados da letra saem com `ç`, `ã` e `é` corretos.             |
-| 🇧🇷 **Mensagens em português**     | Avisos e erros explicam o que aconteceu e o que fazer.                                                              |
-| 🌗 **Tema claro e escuro**        | E layout que funciona no celular.                                                                                   |
+|                                   |                                                                                                                                                                                                                                                    |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 📂 **Vários arquivos de uma vez** | Arraste para qualquer lugar da página ou clique para escolher. A conversão roda em fila.                                                                                                                                                           |
+| 📋 **Colar com Ctrl+V**           | Cole um trecho copiado do Google Docs, do Word ou de uma página web e receba o Markdown na hora.                                                                                                                                                   |
+| 👀 **Prévia**                     | Veja o Markdown bruto ou renderizado antes de baixar.                                                                                                                                                                                              |
+| ⬇️ **Download**                   | `.md` por arquivo, ou `.zip` com tudo (e com as imagens extraídas em uma pasta).                                                                                                                                                                   |
+| 🔍 **OCR**                        | Imagens e PDFs escaneados viram texto, em português ou inglês.                                                                                                                                                                                     |
+| ⚙️ **Opções por formato**         | Ex.: detecção de tabelas, separação de páginas, limite de linhas da planilha. Mudar uma opção reconverte o arquivo.                                                                                                                                |
+| 📈 **Arquivos grandes**           | Progresso por página, cancelamento ao remover o arquivo e opção de converter só as primeiras páginas.                                                                                                                                              |
+| 🔤 **Acentuação correta**         | Corrige sozinho os defeitos mais comuns em documentos de órgãos públicos: arquivos em ANSI (Windows-1252), acentos separados da letra, acentos gravados em codificação trocada (`MUNICÕPIO`) e texto corrompido por sistemas anteriores (`Ã§Ã£o`). |
+| 🛟 **Plano B automático**         | Páginas com texto ilegível (fonte sem mapa de caracteres, ex.: `3UHIHLWXUD`) são lidas por OCR, como se fossem escaneadas.                                                                                                                         |
+| 🇧🇷 **Mensagens em português**     | Avisos e erros explicam o que aconteceu e o que fazer.                                                                                                                                                                                             |
+| 🌗 **Tema claro e escuro**        | E layout que funciona no celular.                                                                                                                                                                                                                  |
 
 ## Formatos suportados
 

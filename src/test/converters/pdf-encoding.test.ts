@@ -4,7 +4,9 @@ import {
   fixMacRoman,
   measureMacRoman,
   restoreUppercaseECircumflex,
+  fixUtf8AsWindows1252,
 } from "@/lib/mojibake";
+import { convertFile, registry } from "@/converters";
 import {
   describePages,
   expandPageRanges,
@@ -106,5 +108,29 @@ describe("intervalo de páginas", () => {
     expect(() => selectPages("custom", "20-30", 14)).toThrow(
       "Este PDF tem 14 páginas; nenhuma das páginas pedidas (20-30) existe.",
     );
+  });
+});
+
+describe("UTF-8 lido como Windows-1252 (“Ã§Ã£o”)", () => {
+  it.each([
+    ["AÃ§Ã£o de cobranÃ§a", "Ação de cobrança"],
+    ["MunicÃ\u00adpio de MaceiÃ³", "Município de Maceió"],
+    ["NÂº 12 e 2Âª via", "Nº 12 e 2ª via"],
+    ["ATENÃ‡ÃƒO: Ã“RGÃƒO", "ATENÇÃO: ÓRGÃO"],
+    ["Ã  vista, Ãºltimo, prÃ©vio", "à vista, último, prévio"],
+  ])("%s → %s", (input, expected) => {
+    expect(fixUtf8AsWindows1252(input).text).toBe(expected);
+  });
+
+  it("não altera texto correto que contém Ã e Â de verdade", () => {
+    const text = "ÃO, Ângela e SÃO PAULO: Ãrea? Não. IRMÃ E AMANHÃ ";
+    expect(fixUtf8AsWindows1252(text)).toEqual({ text, fixed: 0 });
+  });
+
+  it("é aplicado a qualquer formato na limpeza final, com aviso", async () => {
+    const file = new File(["RelatÃ³rio de execuÃ§Ã£o orÃ§amentÃ¡ria"], "a.txt");
+    const r = await convertFile(registry.find("a.txt")!, file, {});
+    expect(r.markdown).toBe("Relatório de execução orçamentária\n");
+    expect(r.warnings.join(" ")).toMatch(/acentos corrompidos/);
   });
 });

@@ -7,7 +7,8 @@ import {
   type PdfLayoutOptions,
   type PdfTextItem,
 } from "./pdf-layout";
-import { parsePageRanges, selectPages } from "./pdf-pages";
+import { describePages, parsePageRanges, selectPages } from "./pdf-pages";
+import { assessTextQuality } from "@/lib/text-quality";
 import { MacRomanDetector, restoreUppercaseECircumflex } from "@/lib/mojibake";
 import { largestImageCoverage } from "./pdf-images";
 import { OCR_LANGUAGE_CHOICES, createOcrEngine, type OcrEngine, type OcrLanguage } from "@/lib/ocr";
@@ -109,6 +110,7 @@ export const pdfConverter: Converter = {
     const pageNumbers: number[] = [];
     const encodingDetector = new MacRomanDetector();
     const seenMarginText = new Set<string>();
+    const garbledPages: number[] = [];
     const useOcr = options["ocr"] !== "off";
     let ocr: OcrEngine | null = null;
     const ocrPages: number[] = [];
@@ -150,7 +152,11 @@ export const pdfConverter: Converter = {
           const items = fixed.filter((i) => Math.abs(i.rotation) < 0.2);
           const rotated = fixed.filter((i) => Math.abs(i.rotation) >= 0.2).map(unrotate);
           const chars = items.reduce((n, i) => n + i.str.trim().length, 0);
-          let scanned = chars < MIN_TEXT_CHARS;
+          // Texto ilegível (fonte sem mapa de caracteres: "3UHIHLWXUD") não tem conserto
+          // por regras: a página é lida por OCR, como se fosse escaneada.
+          const garbled = assessTextQuality(items.map((i) => i.str).join(" ")).garbled;
+          if (garbled) garbledPages.push(n);
+          let scanned = chars < MIN_TEXT_CHARS || garbled;
           if (useOcr && !scanned && chars <= SCANNED_MAX_TEXT_CHARS) {
             const { fnArray, argsArray } = await page.getOperatorList();
             const { OPS } = pdfjs;
@@ -222,6 +228,15 @@ export const pdfConverter: Converter = {
       await (ocr as OcrEngine | null)?.terminate();
     }
 
+    if (garbledPages.length) {
+      const which = describePages(garbledPages);
+      const plural = garbledPages.length > 1;
+      warnings.push(
+        useOcr
+          ? `${plural ? "As páginas" : "A página"} ${which} ${plural ? "tinham" : "tinha"} texto ilegível (fonte sem mapa de caracteres) e ${plural ? "foram lidas" : "foi lida"} por reconhecimento de texto (OCR).`
+          : `${plural ? "As páginas" : "A página"} ${which} ${plural ? "têm" : "tem"} texto ilegível (fonte sem mapa de caracteres). Ative o OCR nas opções para lê-${plural ? "las" : "la"}.`,
+      );
+    }
     if (encodingDetector.affected) {
       warnings.push(
         "Parte do texto deste PDF estava com os acentos gravados em codificação trocada (ex.: “MUNICÕPIO”). Os acentos foram corrigidos automaticamente.",

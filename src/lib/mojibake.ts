@@ -137,3 +137,66 @@ const LOST_E_CIRCUMFLEX =
 export function restoreUppercaseECircumflex(text: string): string {
   return text.replace(LOST_E_CIRCUMFLEX, "$1Ê$2");
 }
+
+/**
+ * UTF-8 lido como Windows-1252 ("Ã§Ã£o" no lugar de "ção", "NÂº" no lugar de "Nº").
+ * Acontece quando o texto passou por um sistema que errou a codificação antes de
+ * virar PDF/DOCX/TXT. Cada par "Ã§" volta a ser os dois bytes UTF-8 originais.
+ */
+let cp1252Bytes: Map<string, number> | null = null;
+
+function cp1252ByteOf(ch: string): number | undefined {
+  if (!cp1252Bytes) {
+    cp1252Bytes = new Map();
+    const decoded = new TextDecoder("windows-1252").decode(
+      Uint8Array.from({ length: 256 }, (_, i) => i),
+    );
+    [...decoded].forEach((c, i) => cp1252Bytes!.set(c, i));
+    // Bytes sem caractere em Windows-1252 aparecem como o próprio código (Latin-1).
+    for (const b of [0x81, 0x8d, 0x8f, 0x90, 0x9d]) cp1252Bytes.set(String.fromCharCode(b), b);
+  }
+  return cp1252Bytes.get(ch);
+}
+
+/** Primeiro byte de sequências UTF-8 de 2 bytes que cobrem os acentos latinos (Â, Ã, Å). */
+const UTF8_LEAD = /[ÂÃÅ]/;
+
+export function fixUtf8AsWindows1252(text: string): { text: string; fixed: number } {
+  if (!UTF8_LEAD.test(text)) return { text, fixed: 0 };
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  const chars = [...text];
+  let out = "";
+  let fixed = 0;
+  for (let i = 0; i < chars.length; i++) {
+    const lead = cp1252ByteOf(chars[i]!);
+    const cont = chars[i + 1] !== undefined ? cp1252ByteOf(chars[i + 1]!) : undefined;
+    if (
+      lead !== undefined &&
+      lead >= 0xc2 &&
+      lead <= 0xc5 &&
+      cont !== undefined &&
+      cont >= 0x80 &&
+      cont <= 0xbf
+    ) {
+      try {
+        out += decoder.decode(Uint8Array.of(lead, cont));
+        fixed++;
+        i++;
+        continue;
+      } catch {
+        /* não era uma sequência válida: mantém o texto */
+      }
+    }
+    out += chars[i];
+  }
+  // "à"/"às": o segundo byte é um espaço sem quebra, que costuma virar espaço comum
+  // no caminho ("Ã  vista", "Ã s 10h"). Só em textos com o defeito comprovado e com o
+  // "Ã" isolado, para não mexer em palavras como "IRMÃ" ou "AMANHÃ".
+  if (fixed >= 2) {
+    out = out.replace(/(^|[^\p{L}])Ã[ \u00a0]/gu, (_, before: string) => {
+      fixed++;
+      return `${before}à`;
+    });
+  }
+  return { text: out, fixed };
+}

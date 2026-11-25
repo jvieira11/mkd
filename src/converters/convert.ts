@@ -7,6 +7,7 @@ import type {
 import { getBaseName } from "./registry";
 import { normalizeMarkdown } from "@/lib/markdown";
 import { summarizeWarnings } from "@/lib/messages";
+import { fixUtf8AsWindows1252 } from "@/lib/mojibake";
 
 export interface ConvertFileExtras {
   onProgress?: (progress: ConversionProgress) => void;
@@ -28,11 +29,19 @@ export async function convertFile(
     signal,
   });
   signal.throwIfAborted();
+  // Acentos corrompidos por um sistema anterior ("Ã§Ã£o" → "ção"), em qualquer formato.
+  const repaired = fixUtf8AsWindows1252(result.markdown);
+  const warnings = [...result.warnings];
+  if (repaired.fixed >= 2) {
+    warnings.push(
+      `O texto tinha ${repaired.fixed} acentos corrompidos (ex.: “Ã§” no lugar de “ç”), que foram corrigidos automaticamente.`,
+    );
+  }
   return {
     ...result,
-    markdown: normalizeMarkdown(result.markdown),
+    markdown: normalizeMarkdown(repaired.fixed >= 2 ? repaired.text : result.markdown),
     // Toda mensagem chega ao usuário em português, agrupada e sem repetições.
-    warnings: summarizeWarnings(result.warnings),
+    warnings: summarizeWarnings(warnings),
   };
 }
 
