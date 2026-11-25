@@ -200,6 +200,7 @@ function Index() {
                   </CardHeader>
                   <CardContent>
                     <OptionsPanel
+                      key={selected.id}
                       converter={selected.converter}
                       values={selected.options}
                       disabled={selected.status === "converting"}

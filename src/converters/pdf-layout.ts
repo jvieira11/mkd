@@ -19,6 +19,8 @@ export interface PdfLayoutOptions {
   pageBreak: "none" | "rule" | "comment";
   /** Detecta blocos com colunas alinhadas e gera tabelas Markdown. */
   tables: boolean;
+  /** Número real de cada página (quando só parte do PDF foi convertida). */
+  pageNumbers?: number[] | undefined;
 }
 
 /** Trecho contínuo de uma linha, separado do próximo por um espaço grande (possível coluna). */
@@ -38,6 +40,8 @@ export interface PdfLine {
   segments: Segment[];
   /** Linha vinda de OCR: medidas de altura menos precisas (ver `headingLevel`). */
   ocr?: boolean | undefined;
+  /** Sempre começa um parágrafo novo (ex.: texto da margem anexado ao fim da página). */
+  breakBefore?: boolean | undefined;
 }
 
 type Line = PdfLine;
@@ -68,7 +72,8 @@ export function pdfLinesToMarkdown(pageLines: PdfLine[][], options: PdfLayoutOpt
   pageLines.forEach((lines, pageIndex) => {
     if (pageIndex > 0) {
       if (options.pageBreak === "rule") out.push("---");
-      if (options.pageBreak === "comment") out.push(`<!-- página ${pageIndex + 1} -->`);
+      if (options.pageBreak === "comment")
+        out.push(`<!-- página ${options.pageNumbers?.[pageIndex] ?? pageIndex + 1} -->`);
     }
     out.push(...linesToBlocks(lines, bodySize, options.tables));
   });
@@ -223,6 +228,7 @@ function linesToBlocks(lines: Line[], bodySize: number, detectTables: boolean): 
     const pitch = Number.isFinite(local) ? local : lastPitch;
     const newBlock =
       !prev ||
+      line.breakBefore ||
       headingLevel(prev, bodySize) > 0 ||
       gap > Math.max(Math.max(line.size, bodySize) * 1.6, pitch * 1.4) ||
       endsEarly(prev) ||

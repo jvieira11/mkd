@@ -5,7 +5,10 @@ import {
   pdfLinesToMarkdown,
   type PdfLine,
   type PdfLayoutOptions,
+  type PdfTextItem,
 } from "./pdf-layout";
+import { parsePageRanges, selectPages } from "./pdf-pages";
+import { MacRomanDetector, restoreUppercaseECircumflex } from "@/lib/mojibake";
 import { largestImageCoverage } from "./pdf-images";
 import { OCR_LANGUAGE_CHOICES, createOcrEngine, type OcrEngine, type OcrLanguage } from "@/lib/ocr";
 
@@ -73,7 +76,18 @@ export const pdfConverter: Converter = {
         { value: "10", label: "Primeiras 10" },
         { value: "50", label: "Primeiras 50" },
         { value: "200", label: "Primeiras 200" },
+        { value: "custom", label: "Personalizado…" },
       ],
+    },
+    {
+      type: "text",
+      key: "pageRange",
+      label: "Quais páginas",
+      description: "Ex.: 3-7, ou várias faixas: 1-3, 5, 10-12. Use 8- para ir até o fim.",
+      placeholder: "Ex.: 3-7",
+      default: "",
+      showWhen: { key: "maxPages", equals: "custom" },
+      validate: (value) => parsePageRanges(value).error,
     },
   ],
   async convert(file, { options, onProgress, signal }) {
@@ -92,36 +106,49 @@ export const pdfConverter: Converter = {
 
     const warnings: string[] = [];
     const pageLines: PdfLine[][] = [];
+    const pageNumbers: number[] = [];
+    const encodingDetector = new MacRomanDetector();
+    const seenMarginText = new Set<string>();
     const useOcr = options["ocr"] !== "off";
     let ocr: OcrEngine | null = null;
     const ocrPages: number[] = [];
     let ocrConfidence = 0;
     try {
       const pdf = await task.promise;
-      const limit = options["maxPages"] === "all" ? Infinity : Number(options["maxPages"]);
-      const total = Math.min(pdf.numPages, limit);
-      if (pdf.numPages > total) {
-        warnings.push(`Convertidas as primeiras ${total} de ${pdf.numPages} páginas.`);
-      }
+      const { pages, notice } = selectPages(
+        String(options["maxPages"] ?? "all"),
+        String(options["pageRange"] ?? ""),
+        pdf.numPages,
+      );
+      if (notice) warnings.push(notice);
+      pageNumbers.push(...pages);
+      const total = pages.length;
       onProgress({ done: 0, total, unit: "página" });
 
-      for (let n = 1; n <= total; n++) {
+      for (const [index, n] of pages.entries()) {
         signal.throwIfAborted();
         try {
           const page = await pdf.getPage(n);
           const content = await page.getTextContent();
-          const items = [];
+          const raw: (PdfTextItem & { fontName: string; rotation: number })[] = [];
           for (const item of content.items) {
             if (!("str" in item)) continue;
-            const [, , , d = 0, x = 0, y = 0] = item.transform as number[];
-            items.push({
+            const [a = 1, b = 0, c = 0, d = 0, x = 0, y = 0] = item.transform as number[];
+            raw.push({
               str: item.str,
               x,
               y,
               width: item.width,
-              height: item.height || Math.abs(d),
+              height: item.height || Math.hypot(c, d),
+              fontName: item.fontName,
+              rotation: Math.atan2(b, a),
             });
           }
+          // Fontes gravadas em Windows-1252 mas declaradas como Mac Roman ("MUNICÕPIO").
+          const fixed = encodingDetector.fixPage(raw);
+          // Texto girado (carimbos de assinatura na margem) é lido à parte, na sua direção.
+          const items = fixed.filter((i) => Math.abs(i.rotation) < 0.2);
+          const rotated = fixed.filter((i) => Math.abs(i.rotation) >= 0.2).map(unrotate);
           const chars = items.reduce((n, i) => n + i.str.trim().length, 0);
           let scanned = chars < MIN_TEXT_CHARS;
           if (useOcr && !scanned && chars <= SCANNED_MAX_TEXT_CHARS) {
@@ -153,10 +180,10 @@ export const pdfConverter: Converter = {
             // Página escaneada: desenha em alta resolução e reconhece o texto.
             const report = (fraction: number) =>
               onProgress({
-                done: n - 1,
+                done: index,
                 total,
                 unit: "página",
-                detail: `Reconhecendo texto (OCR) · página ${n} de ${total} · ${Math.round(fraction * 100)}%`,
+                detail: `Reconhecendo texto (OCR) · página ${n} de ${pdf.numPages} · ${Math.round(fraction * 100)}%`,
               });
             report(0);
             ocr ??= await createOcrEngine(
@@ -179,7 +206,7 @@ export const pdfConverter: Converter = {
             pageLines.push(markOcr(groupLines(result.items)));
           } else {
             // Agrupa em linhas já aqui: guarda muito menos dados que os itens brutos.
-            pageLines.push(groupLines(items));
+            pageLines.push([...groupLines(items), ...marginText(rotated, seenMarginText)]);
           }
           page.cleanup();
         } catch (error) {
@@ -187,7 +214,7 @@ export const pdfConverter: Converter = {
           warnings.push(`A página ${n} não pôde ser lida e ficou de fora do resultado.`);
           pageLines.push([]);
         }
-        onProgress({ done: n, total, unit: "página" });
+        onProgress({ done: index + 1, total, unit: "página" });
       }
     } finally {
       signal.removeEventListener("abort", abort);
@@ -195,6 +222,11 @@ export const pdfConverter: Converter = {
       await (ocr as OcrEngine | null)?.terminate();
     }
 
+    if (encodingDetector.affected) {
+      warnings.push(
+        "Parte do texto deste PDF estava com os acentos gravados em codificação trocada (ex.: “MUNICÕPIO”). Os acentos foram corrigidos automaticamente.",
+      );
+    }
     if (ocrPages.length) {
       const avg = Math.round(ocrConfidence / ocrPages.length);
       warnings.push(
@@ -202,10 +234,12 @@ export const pdfConverter: Converter = {
       );
     }
 
-    const markdown = pdfLinesToMarkdown(pageLines, {
+    let markdown = pdfLinesToMarkdown(pageLines, {
       pageBreak: (options["pageBreak"] as PdfLayoutOptions["pageBreak"]) ?? "none",
       tables: options["tables"] !== false,
+      pageNumbers,
     });
+    if (encodingDetector.affected) markdown = restoreUppercaseECircumflex(markdown);
     if (!markdown.trim()) {
       warnings.push(
         useOcr
@@ -216,3 +250,33 @@ export const pdfConverter: Converter = {
     return { markdown, assets: [], warnings };
   },
 };
+
+/** Leva um texto girado para o sistema de coordenadas da sua própria direção de leitura. */
+function unrotate<T extends PdfTextItem & { rotation: number }>(item: T): T {
+  const cos = Math.cos(item.rotation);
+  const sin = Math.sin(item.rotation);
+  return { ...item, x: item.x * cos + item.y * sin, y: -item.x * sin + item.y * cos };
+}
+
+/**
+ * Texto girado da margem (ex.: "Documento assinado eletronicamente por…") vira um
+ * parágrafo separado no fim da página. Como costuma se repetir em todas as páginas,
+ * aparece só na primeira vez.
+ */
+function marginText(items: PdfTextItem[], seen: Set<string>): PdfLine[] {
+  if (!items.length) return [];
+  const lines = groupLines(items);
+  // Carimbos estreitos quebram linha até no meio de números ("às 1" / "1:35:09"):
+  // junta tudo em um parágrafo, sem espaço quando a quebra cai entre dígitos.
+  let text = "";
+  for (const line of lines) {
+    const glue = !text || (/\d$/.test(text) && /^\d/.test(line.text)) ? "" : " ";
+    text += glue + line.text;
+  }
+  if (!text || seen.has(text)) return [];
+  seen.add(text);
+  const first = lines[0]!;
+  return [
+    { ...first, text, segments: [{ text, x: first.x, right: first.right }], breakBefore: true },
+  ];
+}

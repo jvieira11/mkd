@@ -7,23 +7,29 @@
  * A interface (upload, opções, prévia e download) se adapta sozinha.
  */
 
+interface OptionBase {
+  key: string;
+  label: string;
+  description?: string;
+  /** Mostra a opção só quando outra opção tem determinado valor. */
+  showWhen?: { key: string; equals: string | boolean };
+}
+
 /** Opção configurável exibida automaticamente na interface. */
 export type ConverterOption =
-  | {
-      type: "boolean";
-      key: string;
-      label: string;
-      description?: string;
-      default: boolean;
-    }
-  | {
+  | (OptionBase & { type: "boolean"; default: boolean })
+  | (OptionBase & {
       type: "select";
-      key: string;
-      label: string;
-      description?: string;
       default: string;
       choices: { value: string; label: string }[];
-    };
+    })
+  | (OptionBase & {
+      type: "text";
+      default: string;
+      placeholder?: string;
+      /** Devolve uma mensagem de erro em português, ou null se o valor é válido. */
+      validate?: (value: string) => string | null;
+    });
 
 export type ConverterOptionValues = Record<string, boolean | string>;
 
